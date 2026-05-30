@@ -1,0 +1,9 @@
+# Custom Background Music Instructions
+
+To play your own favorite song as the background music:
+
+1. Drop your custom audio file into this `public/` folder.
+2. Rename the file to `song.mp3`.
+3. The app is already pre-programmed to automatically scan for `/song.mp3` first, and will seamlessly switch to it instead of the default streaming serene piano track.
+
+Enjoy your custom digital sanctuary soundtrack! 🌸🕊

@@ -5,7 +5,6 @@
 
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 
@@ -192,6 +191,7 @@ Your purpose: to make whoever speaks with you feel seen, heard, and cared for â€
 // Start server
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -210,4 +210,9 @@ async function startServer() {
   });
 }
 
-startServer();
+// Start server only if not running in a serverless or Vercel serverless context
+if (!process.env.VERCEL && process.env.SERVERLESS !== "true" && !process.env.NETLIFY) {
+  startServer();
+}
+
+export default app;

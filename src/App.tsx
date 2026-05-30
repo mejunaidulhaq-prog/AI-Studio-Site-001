@@ -33,6 +33,10 @@ export default function App() {
   const droneNodeRef = useRef<OscillatorNode | null>(null);
   const droneGainRef = useRef<GainNode | null>(null);
 
+  // Serene piano background song support
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const DEFAULT_SONG_URL = "https://assets.mixkit.co/music/preview/mixkit-dreaming-big-31.mp3";
+
   // RULE 9 — Dynamic link injection for Google Fonts
   useEffect(() => {
     const fontLinkRef = document.createElement("link");
@@ -47,6 +51,40 @@ export default function App() {
 
   // Web Audio Synth engine: handles drones and chimes natively (no external assets)
   const initAudio = () => {
+    // 1. Initialize ambient background song
+    if (!audioRef.current) {
+      const audio = new Audio();
+      audio.loop = true;
+      audio.volume = 0.15; // Soft background volume
+
+      // Try playing a custom 'darkhast' song first, then fallback to local song.mp3, then to the streaming default
+      audio.src = "/darkhast.mp3";
+      audio.onerror = () => {
+        try {
+          if (audio.src && audio.src.includes("darkhast.mp3")) {
+            console.log("/darkhast.mp3 not found, trying /song.mp3");
+            audio.src = "/song.mp3";
+            if (soundEnabled || audioCtxRef.current) {
+              audio.play().catch(() => { });
+            }
+            return;
+          }
+
+          if (audio.src && audio.src.includes("song.mp3")) {
+            console.log("Local song.mp3 not found at /song.mp3. Falling back to serene piano stream.");
+            audio.src = DEFAULT_SONG_URL;
+            if (soundEnabled || audioCtxRef.current) {
+              audio.play().catch(() => { });
+            }
+          }
+        } catch (e) {
+          // noop
+        }
+      };
+      audioRef.current = audio;
+    }
+
+    // 2. Initialize low 60Hz ambient synth hum
     if (audioCtxRef.current) return;
     try {
       const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -86,12 +124,26 @@ export default function App() {
       if (droneGainRef.current && audioCtxRef.current) {
         droneGainRef.current.gain.setTargetAtTime(0.025, audioCtxRef.current.currentTime, 0.5);
       }
+
+      // Start background song playback
+      if (audioRef.current) {
+        audioRef.current.play().catch(err => {
+          console.warn("Audio playback blocked by autoplay policy. Waiting for user gesture.", err);
+        });
+      }
+
       setSoundEnabled(true);
       playTransitionChime(440, 660); // sweet dual startup chime
     } else {
       if (droneGainRef.current && audioCtxRef.current) {
         droneGainRef.current.gain.setTargetAtTime(0, audioCtxRef.current.currentTime, 0.5);
       }
+
+      // Pause background song playback
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+
       setSoundEnabled(false);
     }
   };
@@ -100,7 +152,7 @@ export default function App() {
   const playTransitionChime = (fromFreq = 220, toFreq = 440) => {
     if (!soundEnabled || !audioCtxRef.current) return;
     const ctx = audioCtxRef.current;
-    
+
     try {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
